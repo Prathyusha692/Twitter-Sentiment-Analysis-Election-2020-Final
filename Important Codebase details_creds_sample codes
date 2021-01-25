@@ -1,0 +1,126 @@
+
+
+Important- Codebase details/creds/sample codes
+
+1) Code to collect streaming Data
+
+C:\Users\Prathyusha\Documents\Research related\RA 2021 Complete Code >> 01 datacollection and twitter_creds.yml files
+
+2) Data Collected for whole election Month 
+C:\Users\Prathyusha\Desktop\data\dump (All raw tweets from MongoDB)
+
+
+3) Code to cleanse and extract state from geo_false tweets
+C:\Users\Prathyusha\Documents\Research related\RA 2021 Complete Code >> >> States Database mapping  code
+4) Total data set of all tweets after cleansing
+C:\Users\Prathyusha\Desktop\data\est_tweets (Tweets mapped to states and final Tweets after removing Nulls and parquet format)
+
+5) State wise sentiment analysis
+C:\Users\Prathyusha\Documents\Research related\RA 2021 Complete Code >> >> TwitterSenti analysis 2020 Final
+
+The above file then writes data to excel which is then imported to Tablue to display over map and analysis.
+*****************************************************************************************************************
+
+https://account.mongodb.com/account/login
+pd946088@wcupa.edu
+Mongo@123
+
+
+https://sso.online.tableau.com/public/idp/SSO
+PD946088@wcupa.edu
+Prat@1906
+
+https://community.cloud.databricks.com/login.html
+PD946088@wcupa.edu
+Prat@1906
+***********************************************************************************************************************
+
+mongo "mongodb+srv://admin:admin@prathyushawcu.jkrrw.mongodb.net/test_db?retryWrites=true"
+use debate0929;
+show collections;
+var local_db=connect("mongodb://localhost:27017/debate0929")
+db.geo_true.find().forEach(function(p) { local_db.geo_true.insert(p); });
+db.geo_false.find().forEach(function(p) { local_db.geo_false.insert(p); });
+
+mongo "mongodb+srv://admin:admin@prathyushawcu.jkrrw.mongodb.net/test_db?retryWrites=true"   
+use dbtocopy;
+var local_db=connect("mongodb://localhost:27017/all_tweets") #db name where to copy -all tweets db)
+db.geo_false.find().forEach(function(p) { local_db.geo_false.insert(p); });
+db.geo_true.find().count()
+db.geo_false.find().count()       
+======================================================
+---- to store dump of all local dbs > go to dump folder stored on desktop , open cmd from there and run mongodump; it will store all dbs backup;
+----------------------------------------------------------
+===========================================================
+********Export data from MongoDb to PARQUET ***************
+===========================================================
+spark-shell --conf "spark.mongodb.input.uri=mongodb://127.0.0.1/all_tweets.geo_true" --conf "spark.mongodb.output.uri=mongodb://localhost/test.products" --packages org.mongodb.spark:mongo-spark-connector_2.12:2.4.2
+import com.mongodb.spark.MongoSpark
+val data = MongoSpark.load(spark).toDF()
+data.show(false)
+data.write.parquet("geo_true")
+
+spark-shell --conf "spark.mongodb.input.uri=mongodb://127.0.0.1/all_tweets.geo_false" --conf "spark.mongodb.output.uri=mongodb://localhost/test.products" --packages org.mongodb.spark:mongo-spark-connector_2.12:2.4.2 --conf spark.driver.memory=5G --conf spark.executor.memory=10G
+import com.mongodb.spark.MongoSpark
+val data = MongoSpark.load(spark).toDF()
+data.write.parquet("geo_false")
+data.show(false)
+geo.show(20,false)
+************************************************************************
+spark-shell --conf "spark.mongodb.input.uri=mongodb://127.0.0.1/all_tweets.geo_false" --conf "spark.mongodb.output.uri=mongodb://localhost/test.products" --packages org.mongodb.spark:mongo-spark-connector_2.12:2.4.2 --master yarn-cluster --num-executors 10 --executor-cores 3 --executor-memory 10g --driver-memory 5g  --conf spark.yarn.executor.memoryOverhead=409
+   
+import pandas as pd
+df.to_pickle('123.pkl')    #to save the dataframe, df to 123.pkl
+df1 = pd.read_pickle('123.pkl') #to load 123.pkl back to the dataframe df
+
+-----------------
+To group columns same values:
+(geo_true_df.groupBy("country_code").count().orderBy("country_code").collect())
+To delete files from DBFS data:
+dbutils.fs.rm('/FileStore/tables/filesname.txt', True)
+
+To convert twitter time to est in pyspark
+date_df = joe_only.select('time', from_unixtime(unix_timestamp('time', 'EEE MMM d HH:mm:ss z yyyy')).alias('date'))
+================================
+
+#Using multiple columns on join expression
+  #empDF.join(deptDF, empDF("dept_id") === deptDF("dept_id") && empDF("branch_id") === deptDF("branch_id"),"inner").show(false)
+  #df_d = df1.join(df2, df1['NO'] == df2['NO'], 'left').filter(F.isnull(df2['NO'])).select(df1['NO'],df1['NAME'],df1['LAT'],df1['LONG'], F.lit('DELETE').alias('FLAG'))
+#joined_df = df1.join (df2, (df1 ['name'] == df2 ['name']) & (df1 ['phone'] == df2 ['phone']))
+#joint_df = dt1.join(dt2, (dt1["state"] == dt2["state"]) &(dt1["date_only"] == dt2["date_only"]),"inner")
+
+================================
+"Sun Nov 01 05:04:33 +0000 2020"
+puthong code : df['time'] = pd.DatetimeIndex(pd.to_datetime(df.time)).tz_convert('US/Central')
+#debate= df[(df['time'] > '2020-09-30 19:30:00') & (df['time'] < '2020-10-10 22:30:00')]
+
+Mon Oct 26 05:26:01 +0000 2020
+"EEEEE MMMMM  HH:mm:ss.SSSZ yyyy"
+"EEEEE MMMMM yyyy HH:mm:ss.SSSZ";
+mardi janvier 2018 14:51:02.354+0530
+=======================================================================================================
+from dateutil import parser, tz
+from pyspark.sql.types import StringType
+from pyspark.sql.functions import col, udf
+
+# Create UTC timezone
+utc_zone =  tz.gettz('UTC')
+
+# Create UDF function that apply on the column
+# It takes the String, parse it to a timestamp, convert to UTC, then convert to String again
+func = udf(lambda x: parser.parse(x).astimezone(utc_zone).isoformat(),  StringType())
+
+# Create new column in your dataset
+df = df.withColumn("new_timestamp",func(col("timestamp_value")))
+
+---+-------------------------+-------------------------+
+|id |timestamp_value          |new_timestamp            |
++---+-------------------------+-------------------------+
+|1  |2017-08-01T14:30:00+05:30|2017-08-01T09:00:00+00:00|
+
+Finally you can drop and rename :
+df = df.drop("timestamp_value").withColumnRenamed("new_timestamp","timestamp_value")
+=====================================================================================================
+
+import pyspark.sql.functions as F
+df.withColumn('datetime_cst', F.from_utc_timestamp('datetime_utc', 'CST')).show()
